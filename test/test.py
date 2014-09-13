@@ -139,29 +139,29 @@ class JSONRPCFunctionalTests(unittest.TestCase):
       e = None
       try:
         _parse_sig(sig[0], ['a'])
-      except Exception, exc:
+      except Exception as exc:
         e = exc
       self.assert_(type(e) is sig[1])
-  
+
   def test_validate_args(self):
     sig = 'jsonrpc(String, String) -> String'
     M = jsonrpc_method(sig, validate=True)(lambda r, s1, s2: s1+s2)
     self.assert_(validate_params(M, {'params': ['omg', u'wtf']}) is None)
-    
+
     E = None
     try:
       validate_params(M, {'params': [['omg'], ['wtf']]})
-    except Exception, e:
+    except Exception as e:
       E = e
     self.assert_(type(E) is InvalidParamsError)
-  
+
   def test_validate_args_any(self):
     sig = 'jsonrpc(s1=Any, s2=Any)'
     M = jsonrpc_method(sig, validate=True)(lambda r, s1, s2: s1+s2)
     self.assert_(validate_params(M, {'params': ['omg', 'wtf']}) is None)
     self.assert_(validate_params(M, {'params': [['omg'], ['wtf']]}) is None)
     self.assert_(validate_params(M, {'params': {'s1': 'omg', 's2': 'wtf'}}) is None)
-  
+
   def test_types(self):
     assert type(u'') == String
     assert type('') == String
@@ -176,34 +176,34 @@ class JSONRPCFunctionalTests(unittest.TestCase):
 
 proc = None
 
-class ServiceProxyTest(unittest.TestCase):      
+class ServiceProxyTest(unittest.TestCase):
   def setUp(self):
     global proc
     if proc is None:
-      proc = subprocess.Popen([sys.executable, 
+      proc = subprocess.Popen([sys.executable,
         os.path.join(os.path.dirname(os.path.abspath(__file__)), 'test.py'),
         'serve'])
       time.sleep(1)
     self.host = 'http://127.0.0.1:8999/json/'
-  
+
   def tearDown(self):
     # self.proc.terminate()
     # self.proc.wait()
     pass
-  
+
   def test_positional_args(self):
     proxy = ServiceProxy(self.host)
     self.assert_(proxy.jsonrpc.test('Hello')[u'result'] == 'Hello')
     try:
       proxy.jsonrpc.test(string='Hello')
-    except Exception, e:
+    except Exception as e:
       self.assert_(e.args[0] == 'Unsupported arg type for JSON-RPC 1.0 '
                                 '(the default version for this client, '
                                 'pass version="2.0" to use keyword arguments)')
     else:
       self.assert_(False, 'Proxy didnt warn about version mismatch')
-  
-  def test_keyword_args(self):        
+
+  def test_keyword_args(self):
     proxy = ServiceProxy(self.host, version='2.0')
     self.assert_(proxy.jsonrpc.test(string='Hello')[u'result'] == 'Hello')
     self.assert_(proxy.jsonrpc.test('Hello')[u'result'] == 'Hello')
@@ -213,24 +213,24 @@ class JSONRPCTest(unittest.TestCase):
   def setUp(self):
     global proc
     if proc is None:
-      proc = subprocess.Popen([sys.executable, 
+      proc = subprocess.Popen([sys.executable,
         os.path.join(os.path.dirname(os.path.abspath(__file__)), 'test.py'),
         'serve'])
       time.sleep(1)
     self.host = 'http://127.0.0.1:8999/json/'
     self.proxy10 = ServiceProxy(self.host, version='1.0')
     self.proxy20 = ServiceProxy(self.host, version='2.0')
-  
+
   def tearDown(self):
     # self.proc.terminate()
     # self.proc.wait()
     pass
-  
+
   def test_10(self):
     self.assertEqual(
-      self.proxy10.jsonrpc.test('this is a string')[u'result'], 
+      self.proxy10.jsonrpc.test('this is a string')[u'result'],
       u'this is a string')
-  
+
   def test_11(self):
     req = {
       u'version': u'1.1',
@@ -241,15 +241,15 @@ class JSONRPCTest(unittest.TestCase):
     resp = _call(self.host, req)
     self.assertEquals(resp[u'id'], req[u'id'])
     self.assertEquals(resp[u'result'], req[u'params'][0])
-  
+
   def test_10_notify(self):
     pass
-  
+
   def test_11_positional_mixed_args(self):
     req = {
       u'version': u'1.1',
       u'method': u'jsonrpc.strangeEcho',
-      u'params': {u'1': u'this is a string', u'2': u'this is omg', 
+      u'params': {u'1': u'this is a string', u'2': u'this is omg',
                   u'wtf': u'pants', u'nowai': 'nopants'},
       u'id': u'toostrange'
     }
@@ -258,15 +258,15 @@ class JSONRPCTest(unittest.TestCase):
     self.assertEquals(resp[u'result'][1], u'this is omg')
     self.assertEquals(resp[u'result'][0], u'this is a string')
     self.assert_(u'error' not in resp)
-  
+
   def test_11_GET(self):
     pass
-  
+
   def test_11_GET_unsafe(self):
     pass
-  
+
   def test_11_GET_mixed_args(self):
-    params = {u'1': u'this is a string', u'2': u'this is omg', 
+    params = {u'1': u'this is a string', u'2': u'this is omg',
               u'wtf': u'pants', u'nowai': 'nopants'}
     url = "%s%s?%s" % (
       self.host, 'jsonrpc.strangeSafeEcho',
@@ -277,37 +277,37 @@ class JSONRPCTest(unittest.TestCase):
     self.assertEquals(resp[u'result'][1], u'this is omg')
     self.assertEquals(resp[u'result'][0], u'this is a string')
     self.assert_(u'error' not in resp)
-  
+
   def test_20_checked(self):
     self.assertEqual(
       self.proxy10.jsonrpc.varArgs('o', 'm', 'g')[u'result'],
       ['o', 'm', 'g']
     )
     self.assert_(self.proxy10.jsonrpc.varArgs(1,2,3)[u'error'])
-  
+
   def test_11_service_description(self):
     pass
-  
+
   def test_20_keyword_args(self):
     self.assertEqual(
       self.proxy20.jsonrpc.test(string='this is a string')[u'result'],
       u'this is a string')
-  
+
   def test_20_positional_args(self):
     self.assertEqual(
       self.proxy20.jsonrpc.test('this is a string')[u'result'],
       u'this is a string')
-  
+
   def test_20_notify(self):
     req = {
-      u'jsonrpc': u'2.0', 
-      u'method': u'jsonrpc.notify', 
-      u'params': [u'this is a string'], 
+      u'jsonrpc': u'2.0',
+      u'method': u'jsonrpc.notify',
+      u'params': [u'this is a string'],
       u'id': None
     }
     resp = urllib.urlopen(self.host, dumps(req)).read()
     self.assertEquals(resp, '')
-  
+
   def test_20_batch(self):
     req = [{
       u'jsonrpc': u'2.0',
@@ -320,7 +320,7 @@ class JSONRPCTest(unittest.TestCase):
     for i, D in enumerate(resp):
       self.assertEquals(D[u'result'], req[i][u'params'][0])
       self.assertEquals(D[u'id'], req[i][u'id'])
-  
+
   def test_20_batch_with_errors(self):
     req = [{
       u'jsonrpc': u'2.0',
@@ -339,36 +339,30 @@ class JSONRPCTest(unittest.TestCase):
         self.assert_(u'result' not in D)
         self.assert_(u'error' in D)
         self.assertEquals(D[u'error'][u'code'], 500)
-  
+
   def test_authenticated_ok(self):
     self.assertEquals(
       self.proxy10.jsonrpc.testAuth(
         'sammeh', 'password', u'this is a string')[u'result'],
       u'this is a string')
-  
+
   def test_authenticated_ok_kwargs(self):
     self.assertEquals(
       self.proxy20.jsonrpc.testAuth(
         username='sammeh', password='password', string=u'this is a string')[u'result'],
       u'this is a string')
-  
+
   def test_authenticated_fail_kwargs(self):
-    try:
-      self.proxy20.jsonrpc.testAuth(
+      response = self.proxy20.jsonrpc.testAuth(
         username='osammeh', password='password', string=u'this is a string')
-    except IOError, e:
-      self.assertEquals(e.args[1], 401)
-    else:
-      self.assert_(False, 'Didnt return status code 401 on unauthorized access')
-  
+      self.assert_(u'error' in response)
+      self.assertEquals(response[u'error'][u'code'], 401)
+
   def test_authenticated_fail(self):
-    try:
-      self.proxy10.jsonrpc.testAuth(
+      response = self.proxy10.jsonrpc.testAuth(
         'osammeh', 'password', u'this is a string')
-    except IOError, e:
-      self.assertEquals(e.args[1], 401)
-    else:
-      self.assert_(False, 'Didnt return status code 401 on unauthorized access')
+      self.assert_(u'error' in response)
+      self.assertEquals(response[u'error'][u'code'], 401)
 
 
 if __name__ == '__main__':

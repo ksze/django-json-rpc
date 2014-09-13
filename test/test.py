@@ -41,6 +41,10 @@ TEST_DEFAULTS = {
 
 from django.conf import settings
 settings.configure(**TEST_DEFAULTS)
+import django
+# For Django 1.7
+if hasattr(django, 'setup'):
+    django.setup()
 
 from django.core import management
 from django.contrib.auth.models import User

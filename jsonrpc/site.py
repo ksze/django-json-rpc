@@ -1,20 +1,30 @@
+# -*- coding: utf-8 -*-
+
+# Python standard library
 import datetime, decimal
 from functools import wraps
 from uuid import uuid1
-from jsonrpc._json import loads, dumps
-from jsonrpc.exceptions import *
-from jsonrpc.types import *
+
+# Django
 from django.core import signals
+from django.core.serializers.json import DjangoJSONEncoder
+
 empty_dec = lambda f: f
+
 try:
   from django.views.decorators.csrf import csrf_exempt
 except (NameError, ImportError):
   csrf_exempt = empty_dec
 
-from django.core.serializers.json import DjangoJSONEncoder
+# Relative imports
+from ._json import loads, dumps
+from .exceptions import *
+from .types import *
+
 
 NoneType = type(None)
 encode_kw = lambda p: dict([(str(k), v) for k, v in p.iteritems()])
+
 
 def encode_kw11(p):
   if not type(p) is dict:
@@ -88,7 +98,13 @@ class JSONRPCSite(object):
   def set_json_encoder(self, json_encoder=DjangoJSONEncoder):
     self.json_encoder = json_encoder
 
-  def register(self, name, method):
+  def register(self, method, name=None):
+    # if name is not provided, assume that method has been decorated by
+    # @jsonrpc_method or @jsonrpc_method2, which means it will have a
+    # `json_method` attribute attached.
+    if name is None:
+        name = method.json_method
+
     self.urls[unicode(name)] = method
   
   def empty_response(self, version='1.0'):
@@ -270,5 +286,5 @@ class JSONRPCSite(object):
   def describe(self, request):
     return self.service_desc()
 
-
+# default jsonrpc_site
 jsonrpc_site = JSONRPCSite()
